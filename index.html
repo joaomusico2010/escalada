@@ -1,10 +1,12 @@
 <!DOCTYPE html>
 <html lang="pt-br">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Subida Azul | Azure Ascent</title>
-    <meta name="description" content="Um jogo de escalada infinita desafiador e visualmente deslumbrante. Suba o mais alto que puder!">
+    <meta name="description"
+        content="Um jogo de escalada infinita desafiador e visualmente deslumbrante. Suba o mais alto que puder!">
     <style>
         :root {
             --primary: #00d2ff;
@@ -104,8 +106,15 @@
         }
 
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
 
         h1 {
@@ -113,6 +122,7 @@
             margin-bottom: 10px;
             background: linear-gradient(to right, #00d2ff, #3a7bd5);
             -webkit-background-clip: text;
+            background-clip: text;
             -webkit-text-fill-color: transparent;
             font-weight: 800;
         }
@@ -160,20 +170,46 @@
 
         .key {
             background: var(--glass);
-            padding: 2px 8px;
-            border-radius: 4px;
+            padding: 4px 10px;
+            border-radius: 6px;
             border: 1px solid var(--glass-border);
+            font-weight: bold;
+            color: var(--primary);
+        }
+
+        #game-hint {
+            position: absolute;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(15, 23, 42, 0.7);
+            padding: 15px 25px;
+            border-radius: 15px;
+            border: 1px solid var(--glass-border);
+            backdrop-filter: blur(5px);
+            z-index: 5;
+            transition: opacity 0.5s ease;
+            pointer-events: none;
         }
     </style>
 </head>
+
 <body>
 
     <div id="game-container">
         <canvas id="gameCanvas"></canvas>
-        
+
         <div class="hud">
             <div class="score-box">PONTOS: <span id="score">0</span></div>
             <div class="score-box" id="highscore-box">RECORDE: <span id="highscore">0</span></div>
+        </div>
+
+        <div id="game-hint" class="hidden">
+            <div class="controls-hint" style="opacity: 1; margin-top: 0; font-size: 1.1rem;">
+                <span>Use <span class="key">←</span> <span class="key">→</span> ou <span class="key">A</span> <span
+                        class="key">D</span> para mover. <br> <span class="key">Espaço</span> ou <span
+                        class="key">Clique</span> para pulo duplo.</span>
+            </div>
         </div>
 
         <div class="ui-overlay">
@@ -182,8 +218,10 @@
                 <h1>Azure Ascent</h1>
                 <p>Suba até as estrelas. Não caia!</p>
                 <button id="start-btn">JOGAR AGORA</button>
-                <div class="controls-hint">
-                    <span><span class="key">←</span> <span class="key">→</span> ou <span class="key">A</span> <span class="key">D</span> Movimento</span>
+                <div class="controls-hint" style="flex-direction: column; gap: 10px; opacity: 0.9;">
+                    <span><span class="key">←</span> <span class="key">→</span> ou <span class="key">A</span> <span
+                            class="key">D</span> Movimento</span>
+                    <span><span class="key">Espaço</span> ou <span class="key">Clique</span> Pulo Duplo</span>
                 </div>
             </div>
 
@@ -229,6 +267,7 @@
             height: 30,
             vx: 0,
             vy: 0,
+            canDoubleJump: true,
             color: '#00d2ff',
             trail: []
         };
@@ -236,6 +275,7 @@
         let platforms = [];
         let cameraY = 0;
         let keys = {};
+        let playerMoved = false;
 
         // Initialization
         function init() {
@@ -259,12 +299,16 @@
             player.y = VIEWPORT_HEIGHT - 100;
             player.vx = 0;
             player.vy = JUMP_FORCE;
+            player.canDoubleJump = true;
             player.trail = [];
-            
+
             cameraY = 0;
             score = 0;
             updateScore(0);
-            
+            playerMoved = false;
+            document.getElementById('game-hint').classList.remove('hidden');
+            document.getElementById('game-hint').style.opacity = '1';
+
             platforms = [];
             // Create starting platform
             platforms.push({
@@ -289,11 +333,11 @@
 
         function createPlatformAtY(y) {
             // Difficulty scaling
-            const difficultyFactor = Math.min(score / 5000, 1);
+            const difficultyFactor = Math.min(score / 10000, 1);
             const minWidth = 60;
             const maxWidth = 120 - (40 * difficultyFactor);
             const width = Math.random() * (maxWidth - minWidth) + minWidth;
-            
+
             platforms.push({
                 x: Math.random() * (VIEWPORT_WIDTH - width),
                 y: y,
@@ -304,8 +348,50 @@
         }
 
         // Input Handling
-        window.addEventListener('keydown', e => keys[e.code] = true);
+        window.addEventListener('keydown', e => {
+            keys[e.code] = true;
+
+            // Double Jump logic (Space bar)
+            if ((e.key === ' ' || e.code === 'Space') && gameState === 'PLAYING') {
+                performDoubleJump();
+                e.preventDefault();
+            }
+        });
+
+        // Touch/Click support for Double Jump
+        canvas.addEventListener('mousedown', e => {
+            if (gameState === 'PLAYING') performDoubleJump();
+        });
+
+        canvas.addEventListener('touchstart', e => {
+            if (gameState === 'PLAYING') {
+                performDoubleJump();
+                e.preventDefault();
+            }
+        }, { passive: false });
+
         window.addEventListener('keyup', e => keys[e.code] = false);
+
+        function performDoubleJump() {
+            if (player.canDoubleJump) {
+                player.vy = JUMP_FORCE;
+                player.canDoubleJump = false;
+                playerMoved = true;
+
+                // Visual feedback
+                createJumpEffect(player.x + player.width / 2, player.y + player.height);
+
+                // Quick color flash
+                const originalColor = player.color;
+                player.color = '#ffffff';
+                setTimeout(() => player.color = originalColor, 100);
+            }
+        }
+
+        function createJumpEffect(x, y) {
+            // Simple visual feedback for double jump
+            player.trail.unshift({ x: x - player.width / 2, y: y, opacity: 2, scale: 1.5 });
+        }
 
         startBtn.addEventListener('click', () => {
             gameState = 'PLAYING';
@@ -325,10 +411,18 @@
             // Horizontal Movement
             if (keys['ArrowLeft'] || keys['KeyA']) {
                 player.vx -= MOVE_SPEED;
+                playerMoved = true;
             } else if (keys['ArrowRight'] || keys['KeyD']) {
                 player.vx += MOVE_SPEED;
+                playerMoved = true;
             } else {
                 player.vx *= FRICTION;
+            }
+
+            if (playerMoved) {
+                const hint = document.getElementById('game-hint');
+                hint.style.opacity = '0';
+                setTimeout(() => hint.classList.add('hidden'), 500);
             }
 
             // Clamp horizontal speed
@@ -344,9 +438,9 @@
             player.y += player.vy;
 
             // Trail effect
-            player.trail.unshift({x: player.x, y: player.y, opacity: 1});
-            if (player.trail.length > 10) player.trail.pop();
-            player.trail.forEach(t => t.opacity *= 0.8);
+            player.trail.unshift({ x: player.x, y: player.y, opacity: 1 });
+            if (player.trail.length > 20) player.trail.pop();
+            player.trail.forEach(t => t.opacity *= 0.85);
 
             // Platform Collisions (only when falling)
             if (player.vy > 0) {
@@ -359,8 +453,9 @@
                     ) {
                         player.y = plat.y - player.height;
                         player.vy = JUMP_FORCE;
-                        
-                        // Small bounce animation can be added here
+                        player.canDoubleJump = true;
+
+                        // Small bounce effect visual feedback
                     }
                 });
             }
@@ -384,9 +479,10 @@
             const highestPlatY = platforms.length > 0 ? Math.min(...platforms.map(p => p.y)) : player.y;
             if (highestPlatY > cameraY - 200) {
                 // Determine vertical distance between platforms based on difficulty
-                const difficultyFactor = Math.min(score / 5000, 1);
-                const gapMin = 100;
-                const gapMax = 150 + (100 * difficultyFactor);
+                const difficultyFactor = Math.min(score / 12000, 1);
+                const gapMin = 80;
+                // Max jump is ~180, so we limit gapMax to 160 plus the double jump safety
+                const gapMax = 120 + (50 * difficultyFactor);
                 createPlatformAtY(highestPlatY - (Math.random() * (gapMax - gapMin) + gapMin));
             }
 
@@ -428,7 +524,7 @@
                 ctx.fillStyle = plat.color;
                 ctx.shadowBlur = 15;
                 ctx.shadowColor = plat.color;
-                
+
                 // Rounded rectangle platform
                 const r = 8;
                 ctx.beginPath();
@@ -443,7 +539,7 @@
                 ctx.quadraticCurveTo(plat.x, plat.y, plat.x + r, plat.y);
                 ctx.closePath();
                 ctx.fill();
-                
+
                 // Light streak on top
                 ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
                 ctx.fillRect(plat.x + 5, plat.y + 2, plat.width - 10, 2);
@@ -459,7 +555,7 @@
             ctx.shadowBlur = 20;
             ctx.shadowColor = player.color;
             ctx.fillStyle = player.color;
-            
+
             // Player body (rounded square)
             const pr = 6;
             ctx.beginPath();
@@ -494,7 +590,7 @@
                 // Parallax effect based on cameraY
                 let sy = (star.y - cameraY * star.speed) % VIEWPORT_HEIGHT;
                 if (sy < 0) sy += VIEWPORT_HEIGHT;
-                
+
                 ctx.globalAlpha = star.speed;
                 ctx.beginPath();
                 ctx.arc(star.x % VIEWPORT_WIDTH, sy, star.size, 0, Math.PI * 2);
@@ -512,4 +608,5 @@
         init();
     </script>
 </body>
+
 </html>
