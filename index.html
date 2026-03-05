@@ -16,6 +16,7 @@
             --glass: rgba(255, 255, 255, 0.1);
             --glass-border: rgba(255, 255, 255, 0.2);
             --accent-glow: rgba(0, 210, 255, 0.5);
+            --charge-color: #fbbf24;
         }
 
         @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;700&display=swap');
@@ -94,7 +95,17 @@
             font-size: 1.2rem;
             color: var(--primary);
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            transition: color 0.5s ease;
+            transition: color 0.5s ease, transform 0.3s ease;
+            white-space: nowrap;
+        }
+
+        .charge-counter {
+            color: var(--charge-color) !important;
+            font-size: 1rem !important;
+        }
+
+        .pop {
+            transform: scale(1.1);
         }
 
         .screen {
@@ -205,7 +216,10 @@
         <canvas id="gameCanvas"></canvas>
 
         <div class="hud">
-            <div class="score-box">PONTOS: <span id="score">0</span></div>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+                <div class="score-box">PONTOS: <span id="score">0</span></div>
+                <div class="score-box charge-counter" id="charge-box">PULOS: <span id="charges">10</span>/10</div>
+            </div>
             <div class="score-box" id="highscore-box">RECORDE: <span id="highscore">0</span></div>
         </div>
 
@@ -283,6 +297,9 @@
             height: 30,
             vx: 0,
             vy: 0,
+            doubleJumpCharges: 10,
+            maxCharges: 10,
+            lastRefillScore: 0,
             canDoubleJump: true,
             color: '#00d2ff',
             trail: []
@@ -315,8 +332,11 @@
             player.y = VIEWPORT_HEIGHT - 100;
             player.vx = 0;
             player.vy = JUMP_FORCE;
+            player.doubleJumpCharges = 10;
+            player.lastRefillScore = 0;
             player.canDoubleJump = true;
             player.trail = [];
+            updateChargeHUD();
             player.color = COLOR_LEVELS[0].primary;
 
             cameraY = 0;
@@ -355,8 +375,7 @@
                 const colors = COLOR_LEVELS[levelIndex];
 
                 // Visual Flash on level up
-                ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                showScreenFlash('rgba(255, 255, 255, 0.3)');
 
                 // Update CSS Variables
                 document.documentElement.style.setProperty('--primary', colors.primary);
@@ -430,15 +449,54 @@
         window.addEventListener('keyup', e => keys[e.code] = false);
 
         function performDoubleJump() {
-            if (player.canDoubleJump) {
+            if (player.doubleJumpCharges > 0 && player.canDoubleJump) {
                 player.vy = JUMP_FORCE;
+                player.doubleJumpCharges--;
                 player.canDoubleJump = false;
                 playerMoved = true;
+
+                updateChargeHUD();
                 createJumpEffect(player.x + player.width / 2, player.y + player.height);
+
                 const originalColor = player.color;
                 player.color = '#ffffff';
                 setTimeout(() => player.color = originalColor, 100);
             }
+        }
+
+        function refillCharges() {
+            player.doubleJumpCharges = player.maxCharges;
+            updateChargeHUD();
+            showScreenFlash('rgba(251, 191, 36, 0.4)'); // Yellow refill flash
+            const cb = document.getElementById('charge-box');
+            cb.classList.add('pop');
+            setTimeout(() => cb.classList.remove('pop'), 300);
+        }
+
+        function updateChargeHUD() {
+            const chargesEl = document.getElementById('charges');
+            if (chargesEl) chargesEl.innerText = player.doubleJumpCharges;
+        }
+
+        function showScreenFlash(color) {
+            const container = document.getElementById('game-container');
+            const flash = document.createElement('div');
+            flash.style.position = 'absolute';
+            flash.style.top = '0';
+            flash.style.left = '0';
+            flash.style.width = '100%';
+            flash.style.height = '100%';
+            flash.style.backgroundColor = color;
+            flash.style.pointerEvents = 'none';
+            flash.style.zIndex = '100';
+            flash.style.transition = 'opacity 0.4s ease';
+            container.appendChild(flash);
+            setTimeout(() => {
+                flash.style.opacity = '0';
+                setTimeout(() => {
+                    if (flash.parentNode) container.removeChild(flash);
+                }, 400);
+            }, 50);
         }
 
         function createJumpEffect(x, y) {
@@ -518,8 +576,9 @@
             const highestPlatY = platforms.length > 0 ? Math.min(...platforms.map(p => p.y)) : player.y;
             if (highestPlatY > cameraY - 200) {
                 // Procedural gap calculation using current difficulty
+                // Increased spacing to reduce "clutter" and increase difficulty
                 const distanceTier = Math.min(3, Math.floor(score / 10000));
-                const gap = 100 + (Math.random() * (40 + distanceTier * 20));
+                const gap = 120 + (Math.random() * (60 + distanceTier * 20));
                 createPlatformAtY(highestPlatY - gap);
             }
 
@@ -531,6 +590,13 @@
         function updateScore(s) {
             score = s;
             scoreEl.innerText = score;
+
+            // Refill every 3000 points
+            if (score - player.lastRefillScore >= 3000) {
+                refillCharges();
+                player.lastRefillScore = Math.floor(score / 3000) * 3000;
+            }
+
             if (score > highscore) {
                 highscore = score;
                 highscoreEl.innerText = highscore;
