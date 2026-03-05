@@ -111,13 +111,15 @@
         .screen {
             background: rgba(15, 23, 42, 0.85);
             backdrop-filter: blur(15px);
-            padding: 40px;
-            border-radius: 24px;
+            padding: 60px 40px;
+            border-radius: 32px;
             text-align: center;
             border: 1px solid var(--glass-border);
             pointer-events: auto;
-            max-width: 80%;
+            max-width: 90%;
+            width: 420px;
             animation: fadeIn 0.5s ease-out;
+            box-shadow: 0 0 40px rgba(0, 0, 0, 0.4);
         }
 
         @keyframes fadeIn {
@@ -133,32 +135,35 @@
         }
 
         h1 {
-            font-size: 2.5rem;
-            margin-bottom: 10px;
+            font-size: 3.2rem;
+            margin-bottom: 15px;
             background: linear-gradient(to right, var(--primary), var(--secondary));
             -webkit-background-clip: text;
             background-clip: text;
             -webkit-text-fill-color: transparent;
             font-weight: 800;
+            line-height: 1.1;
         }
 
         p {
-            margin-bottom: 30px;
+            margin-bottom: 40px;
             opacity: 0.8;
-            font-size: 1.1rem;
+            font-size: 1.2rem;
+            line-height: 1.5;
         }
 
         button {
             background: linear-gradient(45deg, var(--primary), var(--secondary));
             color: white;
             border: none;
-            padding: 14px 32px;
-            font-size: 1.1rem;
-            font-weight: 700;
-            border-radius: 12px;
+            padding: 20px 48px;
+            font-size: 1.4rem;
+            font-weight: 800;
+            border-radius: 16px;
             cursor: pointer;
             transition: all 0.3s ease;
-            box-shadow: 0 10px 15px -3px var(--accent-glow);
+            box-shadow: 0 10px 20px -5px var(--accent-glow);
+            letter-spacing: 1px;
         }
 
         button:hover {
@@ -175,9 +180,9 @@
         }
 
         .controls-hint {
-            margin-top: 20px;
-            font-size: 0.9rem;
-            opacity: 0.6;
+            margin-top: 35px;
+            font-size: 1.1rem;
+            opacity: 0.8;
             display: flex;
             gap: 15px;
             justify-content: center;
@@ -185,12 +190,13 @@
 
         .key {
             background: var(--glass);
-            padding: 4px 10px;
-            border-radius: 6px;
+            padding: 6px 14px;
+            border-radius: 8px;
             border: 1px solid var(--glass-border);
             font-weight: bold;
             color: var(--primary);
             transition: color 0.5s ease;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
         }
 
         #game-hint {
