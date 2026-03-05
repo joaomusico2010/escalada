@@ -354,6 +354,10 @@
                 currentLevelIndex = levelIndex;
                 const colors = COLOR_LEVELS[levelIndex];
 
+                // Visual Flash on level up
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
                 // Update CSS Variables
                 document.documentElement.style.setProperty('--primary', colors.primary);
                 document.documentElement.style.setProperty('--secondary', colors.secondary);
@@ -362,7 +366,9 @@
 
                 player.color = colors.primary;
 
-                // Animating background gradient would be cool but keep it simple for now
+                // Update existing platforms colors
+                platforms.forEach(p => p.color = colors.secondary);
+
                 const container = document.getElementById('game-container');
                 container.style.background = `linear-gradient(to bottom, #1e293b, ${colors.bg})`;
             }
@@ -378,17 +384,18 @@
 
         function createPlatformAtY(y) {
             // DIFFICULTY PROGRESSION
-            // 1. Color (every 5000) - handled by updateColors
+            const pColors = COLOR_LEVELS[currentLevelIndex];
 
             // 2. Distance increase (every 10000)
-            const distanceTier = Math.floor(score / 10000);
-            const gapMin = 80 + (distanceTier * 15);
-            const gapMax = 140 + (distanceTier * 25);
+            const distanceTier = Math.min(3, Math.floor(score / 10000));
+            // BASE JUMP is ~180. DOUBLE JUMP is ~320.
+            const gapMin = 80 + (distanceTier * 20);
+            const gapMax = 120 + (distanceTier * 30);
 
             // 3. Width decrease (every 20000)
-            const widthTier = Math.floor(score / 20000);
-            const minWidth = Math.max(30, 60 - (widthTier * 10));
-            const maxWidth = Math.max(50, 100 - (widthTier * 15));
+            const widthTier = Math.min(3, Math.floor(score / 20000));
+            const minWidth = Math.max(35, 65 - (widthTier * 10));
+            const maxWidth = Math.max(55, 110 - (widthTier * 15));
             const width = Math.random() * (maxWidth - minWidth) + minWidth;
 
             platforms.push({
@@ -396,7 +403,7 @@
                 y: y,
                 width: width,
                 height: 15,
-                color: COLOR_LEVELS[currentLevelIndex].secondary
+                color: pColors.secondary
             });
         }
 
@@ -510,7 +517,10 @@
 
             const highestPlatY = platforms.length > 0 ? Math.min(...platforms.map(p => p.y)) : player.y;
             if (highestPlatY > cameraY - 200) {
-                createPlatformAtY(highestPlatY - 100); // Base Y, createPlatformAtY handles randomization and scaling
+                // Procedural gap calculation using current difficulty
+                const distanceTier = Math.min(3, Math.floor(score / 10000));
+                const gap = 100 + (Math.random() * (40 + distanceTier * 20));
+                createPlatformAtY(highestPlatY - gap);
             }
 
             if (player.y > cameraY + VIEWPORT_HEIGHT + 50) {
