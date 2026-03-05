@@ -336,14 +336,15 @@
             player.lastRefillScore = 0;
             player.canDoubleJump = true;
             player.trail = [];
-            updateChargeHUD();
-            player.color = COLOR_LEVELS[0].primary;
 
             cameraY = 0;
             score = 0;
             updateScore(0);
-            currentLevelIndex = 0;
+
+            // Set currentLevelIndex to -1 to force updateColors to apply the level 0 theme
+            currentLevelIndex = -1;
             updateColors(0);
+            updateChargeHUD();
 
             playerMoved = false;
             document.getElementById('game-hint').classList.remove('hidden');
@@ -374,8 +375,10 @@
                 currentLevelIndex = levelIndex;
                 const colors = COLOR_LEVELS[levelIndex];
 
-                // Visual Flash on level up
-                showScreenFlash('rgba(255, 255, 255, 0.3)');
+                // Visual Flash on level up (only if score > 0 to avoid flash on restart)
+                if (currentScore > 0) {
+                    showScreenFlash('rgba(255, 255, 255, 0.3)');
+                }
 
                 // Update CSS Variables
                 document.documentElement.style.setProperty('--primary', colors.primary);
