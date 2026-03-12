@@ -689,6 +689,13 @@
                 performDoubleJump();
                 e.preventDefault();
             }
+
+            // Close trampoline hint with Space
+            if ((e.key === ' ' || e.code === 'Space') && gameState === 'PAUSED') {
+                if (!trampolineHintOverlay.classList.contains('hidden')) {
+                    closeTrampolineHint();
+                }
+            }
         });
 
         canvas.addEventListener('mousedown', e => {
@@ -764,12 +771,14 @@
             startScreen.classList.add('hidden');
         });
 
-        closeHintBtn.addEventListener('click', () => {
+        function closeTrampolineHint() {
             gameState = 'PLAYING';
             trampolineHintOverlay.classList.add('hidden');
             trampolineHintShown = true;
             localStorage.setItem('azureTrampolineHintShown', 'true');
-        });
+        }
+
+        closeHintBtn.addEventListener('click', closeTrampolineHint);
 
         restartBtn.addEventListener('click', () => {
             resetGame();
