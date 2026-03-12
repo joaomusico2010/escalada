@@ -234,20 +234,9 @@
             box-shadow: 0 0 10px var(--primary);
         }
 
-        /* Level Selector Styles */
-        #level-selector {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: var(--bg-dark);
-            z-index: 200;
-            padding: 40px 20px;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+        /* Level Selector Styles within UI Overlay */
+        #level-selector.screen {
+            pointer-events: auto;
         }
 
         .level-grid {
@@ -599,6 +588,16 @@
                         AVENTURA
                         <span>50 Fases Desafiadoras</span>
                     </button>
+                </div>
+            </div>
+
+            <!-- Level Selector Screen -->
+            <div id="level-selector" class="screen hidden" style="padding: 30px 20px;">
+                <button id="back-to-main-btn" class="back-btn" style="margin-bottom: 10px;">← VOLTAR</button>
+                <h2 style="color: var(--primary); margin-bottom: 20px;">SELECIONE A FASE</h2>
+                <div id="level-buttons-container" class="level-grid"
+                    style="max-height: 400px; overflow-y: auto; padding: 10px;">
+                    <!-- Buttons generated via JS -->
                 </div>
             </div>
 
