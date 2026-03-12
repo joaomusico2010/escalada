@@ -234,6 +234,86 @@
             box-shadow: 0 0 10px var(--primary);
         }
 
+        /* Level Selector Styles */
+        #level-selector {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--bg-dark);
+            z-index: 200;
+            padding: 40px 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .level-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 12px;
+            width: 100%;
+            max-width: 400px;
+            margin-top: 30px;
+        }
+
+        .level-btn {
+            aspect-ratio: 1;
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            color: #fff;
+        }
+
+        .level-btn.locked {
+            opacity: 0.3;
+            cursor: not-allowed;
+            position: relative;
+        }
+
+        .level-btn.locked::after {
+            content: '🔒';
+            font-size: 0.8rem;
+            position: absolute;
+            bottom: 5px;
+            right: 5px;
+        }
+
+        .level-btn.unlocked:hover {
+            background: var(--primary);
+            transform: scale(1.1);
+            box-shadow: 0 0 15px var(--accent-glow);
+        }
+
+        .level-btn.current {
+            border-color: var(--primary);
+            box-shadow: inset 0 0 10px var(--accent-glow);
+        }
+
+        .back-btn {
+            align-self: flex-start;
+            background: none;
+            box-shadow: none;
+            padding: 10px;
+            font-size: 1rem;
+            opacity: 0.6;
+        }
+
+        .back-btn:hover {
+            opacity: 1;
+            transform: none;
+            box-shadow: none;
+        }
+
         .hidden {
             display: none !important;
         }
@@ -584,6 +664,9 @@
         const classicHud = document.getElementById('classic-hud');
         const progressBarFill = document.getElementById('progress-bar-fill');
         const adventureProgress = document.getElementById('adventure-progress');
+        const levelSelector = document.getElementById('level-selector');
+        const levelButtonsContainer = document.getElementById('level-buttons-container');
+        const backToMainBtn = document.getElementById('back-to-main-btn');
         const trampolineHintOverlay = document.getElementById('trampoline-hint-overlay');
         const closeHintBtn = document.getElementById('close-hint-btn');
 
@@ -611,6 +694,7 @@
         let gameState = 'START';
         let gameMode = 'CLASSIC'; // 'CLASSIC' or 'ADVENTURE'
         let currentLevel = 1;
+        let maxUnlockedLevel = parseInt(localStorage.getItem('azureMaxLevel')) || 1;
         let score = 0;
         let highscore = localStorage.getItem('azureAscentHighscore') || 0;
         highscoreEl.innerText = highscore;
@@ -661,7 +745,17 @@
             player.y = VIEWPORT_HEIGHT - 100;
             player.vx = 0;
             player.vy = JUMP_FORCE;
-            player.doubleJumpCharges = 10;
+
+            // Adventure Mode specific rules
+            if (gameMode === 'ADVENTURE') {
+                // Calculation: Start 3 jumps, +1 every 3 levels, cap at 10
+                const jumpBonus = Math.floor((currentLevel - 1) / 3);
+                player.maxCharges = Math.min(10, 3 + jumpBonus);
+            } else {
+                player.maxCharges = 10;
+            }
+
+            player.doubleJumpCharges = player.maxCharges;
             player.lastRefillScore = 0;
             player.lastBoostScore = 0;
             player.nextBoostThreshold = 15000;
@@ -893,14 +987,46 @@
 
         modeAdventureBtn.addEventListener('click', () => {
             gameMode = 'ADVENTURE';
-            currentLevel = 1;
-            gameState = 'PLAYING';
             startScreen.classList.add('hidden');
-            resetGame();
+            showLevelSelector();
         });
+
+        backToMainBtn.addEventListener('click', () => {
+            levelSelector.classList.add('hidden');
+            startScreen.classList.remove('hidden');
+        });
+
+        function showLevelSelector() {
+            levelSelector.classList.remove('hidden');
+            levelButtonsContainer.innerHTML = '';
+
+            for (let i = 1; i <= 50; i++) {
+                const btn = document.createElement('div');
+                btn.className = 'level-btn';
+                btn.innerText = i;
+
+                if (i <= maxUnlockedLevel) {
+                    btn.classList.add('unlocked');
+                    if (i === currentLevel) btn.classList.add('current');
+                    btn.onclick = () => {
+                        currentLevel = i;
+                        levelSelector.classList.add('hidden');
+                        gameState = 'PLAYING';
+                        resetGame();
+                    };
+                } else {
+                    btn.classList.add('locked');
+                }
+                levelButtonsContainer.appendChild(btn);
+            }
+        }
 
         nextLevelBtn.addEventListener('click', () => {
             currentLevel++;
+            if (currentLevel > maxUnlockedLevel) {
+                maxUnlockedLevel = currentLevel;
+                localStorage.setItem('azureMaxLevel', maxUnlockedLevel);
+            }
             levelClearScreen.classList.add('hidden');
             resetGame();
             gameState = 'PLAYING';
@@ -1057,6 +1183,16 @@
 
         function completeLevel() {
             gameState = 'LEVEL_CLEAR';
+
+            // Advance unlocked progress
+            if (currentLevel < 50) {
+                const nextLvl = currentLevel + 1;
+                if (nextLvl > maxUnlockedLevel) {
+                    maxUnlockedLevel = nextLvl;
+                    localStorage.setItem('azureMaxLevel', maxUnlockedLevel);
+                }
+            }
+
             if (currentLevel >= 50) {
                 adventureCompleteScreen.classList.remove('hidden');
             } else {
@@ -1066,7 +1202,8 @@
         }
 
         function getTargetForLevel(lvl) {
-            return 1000 + (lvl - 1) * 500;
+            // Rule: Level 1 = 10000, +3000 each level
+            return 10000 + (lvl - 1) * 3000;
         }
 
         function endGame() {
