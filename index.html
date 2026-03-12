@@ -685,6 +685,8 @@
         // Input Handling
         window.addEventListener('keydown', e => {
             keys[e.code] = true;
+
+            // Player jump
             if ((e.key === ' ' || e.code === 'Space') && gameState === 'PLAYING') {
                 performDoubleJump();
                 e.preventDefault();
@@ -692,8 +694,9 @@
 
             // Close trampoline hint with Space
             if ((e.key === ' ' || e.code === 'Space') && gameState === 'PAUSED') {
-                if (!trampolineHintOverlay.classList.contains('hidden')) {
+                if (trampolineHintOverlay && !trampolineHintOverlay.classList.contains('hidden')) {
                     closeTrampolineHint();
+                    e.preventDefault(); // Prevent page scroll
                 }
             }
         });
