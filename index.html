@@ -588,6 +588,10 @@
                         AVENTURA
                         <span>50 Fases Desafiadoras</span>
                     </button>
+                    <button id="clear-achievements-btn" class="btn-mode"
+                        style="background: rgba(239, 68, 68, 0.2); border-color: rgba(239, 68, 68, 0.4); margin-top: 10px; padding: 10px; font-size: 0.9rem;">
+                        LIMPAR CONQUISTAS
+                    </button>
                 </div>
             </div>
 
@@ -680,6 +684,7 @@
         const resumeBtn = document.getElementById('resume-btn');
         const pauseToLevelsBtn = document.getElementById('pause-to-levels-btn');
         const pauseToMainBtn = document.getElementById('pause-to-main-btn');
+        const clearAchievementsBtn = document.getElementById('clear-achievements-btn');
         const trampolineHintOverlay = document.getElementById('trampoline-hint-overlay');
         const closeHintBtn = document.getElementById('close-hint-btn');
 
@@ -1054,6 +1059,26 @@
         });
 
         closeHintBtn.addEventListener('click', closeTrampolineHint);
+
+        clearAchievementsBtn.addEventListener('click', () => {
+            if (confirm("Tem certeza que deseja apagar todos os recordes e fases desbloqueadas? Esta ação não pode ser desfeita.")) {
+                localStorage.removeItem('azureAscentHighscore');
+                localStorage.removeItem('azureMaxLevel');
+                localStorage.removeItem('azureTrampolineHintShown');
+
+                // Reset local variables
+                highscore = 0;
+                maxUnlockedLevel = 1;
+                currentLevel = 1;
+                trampolineHintShown = false;
+
+                // Update UI
+                highscoreEl.innerText = "0";
+
+                alert("Conquistas resetadas com sucesso!");
+                location.reload(); // Recarrega para garantir estado limpo
+            }
+        });
 
         function showLevelSelector() {
             levelSelector.classList.remove('hidden');
