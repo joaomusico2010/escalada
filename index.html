@@ -175,6 +175,65 @@
             transform: translateY(0);
         }
 
+        .menu-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 15px;
+            width: 100%;
+        }
+
+        .btn-mode {
+            padding: 15px;
+            font-size: 1.1rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .btn-mode span {
+            font-size: 0.8rem;
+            opacity: 0.7;
+            font-weight: 400;
+        }
+
+        .level-indicator {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--glass);
+            padding: 5px 20px;
+            border-radius: 20px;
+            border: 1px solid var(--glass-border);
+            font-weight: bold;
+            color: var(--primary);
+            z-index: 5;
+        }
+
+        .progress-container {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 6px;
+            height: 200px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            overflow: hidden;
+            z-index: 5;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 0%;
+            background: var(--primary);
+            position: absolute;
+            bottom: 0;
+            transition: height 0.3s ease;
+            box-shadow: 0 0 10px var(--primary);
+        }
+
         .hidden {
             display: none !important;
         }
@@ -415,7 +474,17 @@
                 <div class="score-box">PONTOS: <span id="score">0</span></div>
                 <div class="score-box charge-counter" id="charge-box">PULOS: <span id="charges">10</span>/10</div>
             </div>
-            <div class="score-box" id="highscore-box">RECORDE: <span id="highscore">0</span></div>
+            <div id="adventure-hud" class="hidden"
+                style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
+                <div class="score-box">FASE: <span id="current-level-display">1</span>/50</div>
+                <div class="score-box" style="font-size: 0.9rem;">META: <span id="target-score-display">1000</span>
+                </div>
+            </div>
+            <div class="score-box" id="classic-hud">RECORDE: <span id="highscore">0</span></div>
+        </div>
+
+        <div id="adventure-progress" class="progress-container hidden">
+            <div id="progress-bar-fill" class="progress-bar"></div>
         </div>
 
         <div id="game-hint" class="hidden">
@@ -438,14 +507,35 @@
                         </div>
                     </div>
                 </div>
-                <h1 id="main-title">Azure Ascent</h1>
-                <p>Suba até as estrelas. Não caia!</p>
-                <button id="start-btn">JOGAR AGORA</button>
-                <div class="controls-hint" style="flex-direction: column; gap: 10px; opacity: 0.9;">
-                    <span><span class="key">←</span> <span class="key">→</span> ou <span class="key">A</span> <span
-                            class="key">D</span> Movimento</span>
-                    <span><span class="key">Espaço</span> ou <span class="key">Clique</span> Pulo Duplo</span>
+                <h1>Azure Ascent</h1>
+                <p>Escolha seu desafio:</p>
+                <div class="menu-grid">
+                    <button id="mode-classic-btn" class="btn-mode">
+                        CLÁSSICO
+                        <span>Modo Infinito</span>
+                    </button>
+                    <button id="mode-adventure-btn" class="btn-mode"
+                        style="background: linear-gradient(45deg, #a8ff78, #08ffc8);">
+                        AVENTURA
+                        <span>50 Fases Desafiadoras</span>
+                    </button>
                 </div>
+            </div>
+
+            <!-- Level Clear Screen -->
+            <div id="level-clear-screen" class="screen hidden">
+                <h1 style="color: #a8ff78;">Fase Concluída!</h1>
+                <p>Você dominou a fase <span id="cleared-level-num">1</span>.</p>
+                <button id="next-level-btn">PRÓXIMA FASE</button>
+            </div>
+
+            <!-- Adventure Complete Screen -->
+            <div id="adventure-complete-screen" class="screen hidden">
+                <h1
+                    style="background: linear-gradient(to right, #f9d423, #ff4e50); -webkit-background-clip: text; background-clip: text;">
+                    LENDÁRIO!</h1>
+                <p>Você conquistou os 50 níveis do Azure Ascent!</p>
+                <button id="back-to-menu-btn">VOLTAR AO MENU</button>
             </div>
 
             <!-- Game Over Screen -->
@@ -484,6 +574,16 @@
         const gameOverScreen = document.getElementById('game-over-screen');
         const startBtn = document.getElementById('start-btn');
         const restartBtn = document.getElementById('restart-btn');
+        const modeClassicBtn = document.getElementById('mode-classic-btn');
+        const modeAdventureBtn = document.getElementById('mode-adventure-btn');
+        const levelClearScreen = document.getElementById('level-clear-screen');
+        const nextLevelBtn = document.getElementById('next-level-btn');
+        const adventureCompleteScreen = document.getElementById('adventure-complete-screen');
+        const backToMenuBtn = document.getElementById('back-to-menu-btn');
+        const adventureHud = document.getElementById('adventure-hud');
+        const classicHud = document.getElementById('classic-hud');
+        const progressBarFill = document.getElementById('progress-bar-fill');
+        const adventureProgress = document.getElementById('adventure-progress');
         const trampolineHintOverlay = document.getElementById('trampoline-hint-overlay');
         const closeHintBtn = document.getElementById('close-hint-btn');
 
@@ -509,6 +609,8 @@
 
         // Game State
         let gameState = 'START';
+        let gameMode = 'CLASSIC'; // 'CLASSIC' or 'ADVENTURE'
+        let currentLevel = 1;
         let score = 0;
         let highscore = localStorage.getItem('azureAscentHighscore') || 0;
         highscoreEl.innerText = highscore;
@@ -579,6 +681,18 @@
             document.getElementById('game-hint').classList.remove('hidden');
             document.getElementById('game-hint').style.opacity = '1';
 
+            if (gameMode === 'ADVENTURE') {
+                adventureHud.classList.remove('hidden');
+                classicHud.classList.add('hidden');
+                adventureProgress.classList.remove('hidden');
+                document.getElementById('current-level-display').innerText = currentLevel;
+                document.getElementById('target-score-display').innerText = getTargetForLevel(currentLevel);
+            } else {
+                adventureHud.classList.add('hidden');
+                classicHud.classList.remove('hidden');
+                adventureProgress.classList.add('hidden');
+            }
+
             platforms = [];
             platforms.push({
                 x: VIEWPORT_WIDTH / 2 - 50,
@@ -634,29 +748,30 @@
         }
 
         function createPlatformAtY(y) {
-            // DIFFICULTY PROGRESSION
+            // DIFFICULTY PROGRESSION base on score OR level
             const pColors = COLOR_LEVELS[currentLevelIndex];
 
-            // 2. Distance increase (every 10000)
-            const distanceTier = Math.min(3, Math.floor(score / 10000));
-            const gapMin = 80 + (distanceTier * 20);
-            const gapMax = 120 + (distanceTier * 30);
+            // In Adventure mode, difficulty increases based on level too
+            const adventureDifficultyBonus = gameMode === 'ADVENTURE' ? (currentLevel / 10) : 0;
 
-            // 3. Width decrease (every 20000)
-            const widthTier = Math.min(3, Math.floor(score / 20000));
-            const minWidth = Math.max(35, 65 - (widthTier * 10));
-            const maxWidth = Math.max(55, 110 - (widthTier * 15));
+            // 2. Distance increase
+            const distanceTier = Math.min(4, Math.floor(score / 10000) + adventureDifficultyBonus);
+            const gapMin = 80 + (distanceTier * 22);
+            const gapMax = 120 + (distanceTier * 35);
+
+            // 3. Width decrease
+            const widthTier = Math.min(4, Math.floor(score / 20000) + adventureDifficultyBonus);
+            const minWidth = Math.max(30, 65 - (widthTier * 12));
+            const maxWidth = Math.max(50, 110 - (widthTier * 18));
             const width = Math.random() * (maxWidth - minWidth) + minWidth;
 
-            // 4. Moving platforms (every 20000)
+            // 4. Moving platforms
             let speed = 0;
-            if (score >= 20000) {
-                // Higher tier = faster platforms. 
-                // Speed increases every 20000 points.
-                const speedTier = Math.floor(score / 20000);
-                const baseSpeed = 1 + (speedTier * 0.5);
-                // 50% chance of being a moving platform after 20k
-                if (Math.random() > 0.5) {
+            const movingThreshold = gameMode === 'ADVENTURE' ? 5000 : 20000;
+            if (score >= movingThreshold || (gameMode === 'ADVENTURE' && currentLevel > 5)) {
+                const speedTier = Math.floor(score / 20000) + adventureDifficultyBonus;
+                const baseSpeed = 1 + (speedTier * 0.6);
+                if (Math.random() > 0.4) {
                     speed = (Math.random() * 0.5 + 0.5) * baseSpeed;
                 }
             }
@@ -769,19 +884,33 @@
             player.trail.unshift({ x: x - player.width / 2, y: y, opacity: 2, scale: 1.5 });
         }
 
-        startBtn.addEventListener('click', () => {
+        modeClassicBtn.addEventListener('click', () => {
+            gameMode = 'CLASSIC';
             gameState = 'PLAYING';
             startScreen.classList.add('hidden');
+            resetGame();
         });
 
-        function closeTrampolineHint() {
+        modeAdventureBtn.addEventListener('click', () => {
+            gameMode = 'ADVENTURE';
+            currentLevel = 1;
             gameState = 'PLAYING';
-            trampolineHintOverlay.classList.add('hidden');
-            trampolineHintShown = true;
-            localStorage.setItem('azureTrampolineHintShown', 'true');
-        }
+            startScreen.classList.add('hidden');
+            resetGame();
+        });
 
-        closeHintBtn.addEventListener('click', closeTrampolineHint);
+        nextLevelBtn.addEventListener('click', () => {
+            currentLevel++;
+            levelClearScreen.classList.add('hidden');
+            resetGame();
+            gameState = 'PLAYING';
+        });
+
+        backToMenuBtn.addEventListener('click', () => {
+            adventureCompleteScreen.classList.add('hidden');
+            startScreen.classList.remove('hidden');
+            gameState = 'START';
+        });
 
         restartBtn.addEventListener('click', () => {
             resetGame();
@@ -903,6 +1032,16 @@
             score = s;
             scoreEl.innerText = score;
 
+            if (gameMode === 'ADVENTURE') {
+                const target = getTargetForLevel(currentLevel);
+                const progress = Math.min(100, (score / target) * 100);
+                progressBarFill.style.height = progress + '%';
+
+                if (score >= target && gameState === 'PLAYING') {
+                    completeLevel();
+                }
+            }
+
             // Refill every 3000 points
             if (score - player.lastRefillScore >= 3000) {
                 refillCharges();
@@ -914,6 +1053,20 @@
                 highscoreEl.innerText = highscore;
                 localStorage.setItem('azureAscentHighscore', highscore);
             }
+        }
+
+        function completeLevel() {
+            gameState = 'LEVEL_CLEAR';
+            if (currentLevel >= 50) {
+                adventureCompleteScreen.classList.remove('hidden');
+            } else {
+                document.getElementById('cleared-level-num').innerText = currentLevel;
+                levelClearScreen.classList.remove('hidden');
+            }
+        }
+
+        function getTargetForLevel(lvl) {
+            return 1000 + (lvl - 1) * 500;
         }
 
         function endGame() {
