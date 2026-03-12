@@ -617,6 +617,16 @@
                 <button id="back-to-menu-btn">VOLTAR AO MENU</button>
             </div>
 
+            <!-- Pause Menu Screen -->
+            <div id="pause-screen" class="screen hidden">
+                <h1 style="color: var(--primary);">PAUSA</h1>
+                <div class="menu-grid">
+                    <button id="resume-btn" class="btn-mode">PROSSEGUIR</button>
+                    <button id="pause-to-levels-btn" class="btn-mode hidden">VOLTAR ÀS FASES</button>
+                    <button id="pause-to-main-btn" class="btn-mode">MENU PRINCIPAL</button>
+                </div>
+            </div>
+
             <!-- Game Over Screen -->
             <div id="game-over-screen" class="screen hidden">
                 <h1>Fim de Jogo!</h1>
@@ -666,6 +676,10 @@
         const levelSelector = document.getElementById('level-selector');
         const levelButtonsContainer = document.getElementById('level-buttons-container');
         const backToMainBtn = document.getElementById('back-to-main-btn');
+        const pauseScreen = document.getElementById('pause-screen');
+        const resumeBtn = document.getElementById('resume-btn');
+        const pauseToLevelsBtn = document.getElementById('pause-to-levels-btn');
+        const pauseToMainBtn = document.getElementById('pause-to-main-btn');
         const trampolineHintOverlay = document.getElementById('trampoline-hint-overlay');
         const closeHintBtn = document.getElementById('close-hint-btn');
 
@@ -907,6 +921,15 @@
                     e.preventDefault(); // Prevent page scroll
                 }
             }
+
+            // Pause with M
+            if (e.key === 'm' || e.key === 'M') {
+                if (gameState === 'PLAYING') {
+                    pauseGame();
+                } else if (gameState === 'PAUSED' && !pauseScreen.classList.contains('hidden')) {
+                    resumeGame();
+                }
+            }
         });
 
         canvas.addEventListener('mousedown', e => {
@@ -994,6 +1017,43 @@
             levelSelector.classList.add('hidden');
             startScreen.classList.remove('hidden');
         });
+
+        function closeTrampolineHint() {
+            gameState = 'PLAYING';
+            trampolineHintOverlay.classList.add('hidden');
+            trampolineHintShown = true;
+            localStorage.setItem('azureTrampolineHintShown', 'true');
+        }
+
+        function pauseGame() {
+            gameState = 'PAUSED';
+            pauseScreen.classList.remove('hidden');
+            if (gameMode === 'ADVENTURE') {
+                pauseToLevelsBtn.classList.remove('hidden');
+            } else {
+                pauseToLevelsBtn.classList.add('hidden');
+            }
+        }
+
+        function resumeGame() {
+            gameState = 'PLAYING';
+            pauseScreen.classList.add('hidden');
+        }
+
+        resumeBtn.addEventListener('click', resumeGame);
+
+        pauseToLevelsBtn.addEventListener('click', () => {
+            pauseScreen.classList.add('hidden');
+            showLevelSelector();
+        });
+
+        pauseToMainBtn.addEventListener('click', () => {
+            pauseScreen.classList.add('hidden');
+            startScreen.classList.remove('hidden');
+            gameState = 'START';
+        });
+
+        closeHintBtn.addEventListener('click', closeTrampolineHint);
 
         function showLevelSelector() {
             levelSelector.classList.remove('hidden');
